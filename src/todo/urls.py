@@ -3,7 +3,7 @@ from todo import views
 from rest_framework.routers import DefaultRouter
 
 
-# Create a roouter and register our viewset with it.
+# Create a router and register our viewset with it.
 router = DefaultRouter(trailing_slash=False)
 router.register(r'todos', views.TodoItemViewSet)
 
