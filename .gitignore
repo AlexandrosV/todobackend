@@ -1,0 +1,15 @@
+# Ignore the virtual environment
+venv
+
+# Ignore compiled Phyton source files
+*.pyc
+
+# Ignore SQLite database files
+*.sqlite3
+
+# Mac OS X hidden files
+.DS_Store
+
+# Phyton cache
+__pycache__
+
