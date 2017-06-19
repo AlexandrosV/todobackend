@@ -1,0 +1,26 @@
+---
+- name: Probe Host
+  hosts: localhost
+  connection : local
+  gather_facts: no
+  tasks:
+  # http://docs.ansible.com/ansible/set_fact_module.html
+  - name: Set facts
+    set_fact:
+      probe_host: "{{ lookup('env','PROBE_HOST') }}"
+      probe_port: "{{ lookup('env','PROBE_PORT') }}"
+      probe_delay: "{{ lookup('env','PROBE_DELAY') | default(0, true) }}"
+      probe_timeout: "{{ lookup('env','PROBE_TIMEOUT') | default(180, true) }}"
+  - name: Message
+    debug:
+      msg: >
+        Checking {{ probe_host }}:{{ probe_port }} with delay={{ probe_delay }}s
+        and timeout={{ probe_timeout }}s
+   # http://docs.ansible.com/ansible/playbooks_delegation.html
+   # http://docs.ansible.com/ansible/wait_for_module.html
+  - name: Waiting for host...
+    local_action: >
+      wait_for host={{ probe_host }}
+      port={{ probe_port }}
+      delay={{ probe_delay }}
+      timeout={{ probe_timeout }}
