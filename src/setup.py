@@ -12,7 +12,8 @@ setup(
                              "djangorestframework>=3.6.2",
                              #"mysql-connector>=2.1.4",
                              #"mysqlclient>=1.3.10"],
-                             "MySQL-python>=1.2.5"],
+                             "MySQL-python>=1.2.5",
+                             "uwsgi>=2.0"],
     extras_require        = {
                                 "test": [
                                     "colorama>=0.3.9",
