@@ -13,3 +13,5 @@ venv
 # Phyton cache
 __pycache__
 
+# Ignore workspace conf file
+**/.idea/workspace.xml
