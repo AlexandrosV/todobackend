@@ -1,0 +1,5 @@
+FROM nginx
+MAINTAINER Alejandro Villamarin <favm@email.com>
+
+# Copy Nginx configuration file
+COPY todobackend.conf /etc/nginx/conf.d/todobackend.conf

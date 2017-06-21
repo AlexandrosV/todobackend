@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/../docker-ansible/.idea/docker-ansible.iml" filepath="$PROJECT_DIR$/../docker-ansible/.idea/docker-ansible.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/todobackend.iml" filepath="$PROJECT_DIR$/.idea/todobackend.iml" />
       <module fileurl="file://$PROJECT_DIR$/../todobackend-base/.idea/todobackend-base.iml" filepath="$PROJECT_DIR$/../todobackend-base/.idea/todobackend-base.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../todobackend-client/.idea/todobackend-client.iml" filepath="$PROJECT_DIR$/../todobackend-client/.idea/todobackend-client.iml" />
       <module fileurl="file://$PROJECT_DIR$/../todobackend-specs/.idea/todobackend-specs.iml" filepath="$PROJECT_DIR$/../todobackend-specs/.idea/todobackend-specs.iml" />
     </modules>
   </component>

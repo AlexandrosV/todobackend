@@ -1,2 +1,5 @@
 # Ignore python virtual environment
 venv
+
+# Ingnore reports directory
+reports

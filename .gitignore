@@ -15,3 +15,7 @@ __pycache__
 
 # Ignore workspace conf file
 **/.idea/workspace.xml
+
+# Ignore builds and tests artifacts
+target
+reports
