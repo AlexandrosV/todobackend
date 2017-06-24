@@ -33,7 +33,10 @@ CHECK := @bash -c '\
 # If absent set to public Dicker hub registry
 DOCKER_REGISTRY ?= docker.io
 
-.PHONY: test build release clean tag buildtag
+# For Docker Hub: It must be empty so se can use an authentication URL
+DOCKER_REGISTRY_AUTH ?=
+
+.PHONY: test build release clean tag buildtag login logout publish
 
 test:
 	${INFO} "Pulling latest images..."
@@ -103,6 +106,21 @@ buildtag:
 	@ $(foreach tag,$(BUILDTAG_ARGS), docker tag $(IMAGE_ID) $(DOCKER_REGISTRY)/$(ORG_NAME)/$(REPO_NAME):$(tag).$(BUILD_TAG);)
 	${INFO} "Tagging completed"
 
+login:
+	${INFO} "Logging in to Docker registry $$DOCKER_REGISTRY..."
+	@docker login -u $$DOCKER_USER -p $$DOCKER_PASSWORD -e $$DOCKER_EMAIL $(DOCKER_REGISTRY_AUTH)
+	${INFO} "Logged in to Docker registry $$DOCKE_REGISTRY"
+
+logout:
+	${INFO} "Logging out Docker registry $$DOCKER_REGISTRY..."
+	@ docker logout
+	${INFO} "Logged out of Docker registry $$DOCKER_REGISTRY"
+
+publish:
+	${INFO} "Publishing release image $(IMAGE_ID) to $(DOCKER_REGISTRY)/$(ORG_NAME)/$(REPO_NAME)..."
+	@ $(foreach tag,$(shell echo $(REPO_EXPR)), docker push $(tag);)
+	${INFO} "Publish completed"
+
 # Visual improvements
 YELLOW := "\e[1;33m"
 NC := "\e[0m"
@@ -119,6 +137,20 @@ APP_CONTAINER_ID := $$(docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) p
 
 # Get image id if application service
 IMAGE_ID := $$(docker inspect -f '{{ .Image }}' $(APP_CONTAINER_ID))
+
+# Regular expression for filtering tags (i.e. todobackend_app:latest & todobackend_webroot:latest need to be excluded)
+ifeq ($(DOCKER_REGISTRY), docker.io)
+  REPO_FILTER := $(ORG_NAME)/$(REPO_NAME)[^[:space:]|$$]*
+else
+  REPO_FILTER := $(DOCKER_REGISTRY)/$(ORG_NAME)/$(REPO_NAME)[[^:space:]|$$]*
+endif
+
+# Get repositories to push
+# docker inspect -f '{{ range.RepoTags }}{{.}} {{end}}' 28b4c583a812
+# alexandrosv/todobackend:0.1 alexandrosv/todobackend:0.1.20170624145158 alexandrosv/todobackend:c812925
+# alexandrosv/todobackend:latest alexandrosv/todobackend:master.20170624145158 *(todobackend_app:latest
+# todobackend_webroot:latest) *last two are excluded by REPO_FILTER
+REPO_EXPR := $$(docker inspect -f '{{ range.RepoTags }}{{.}} {{end}}' $(IMAGE_ID) | grep -oh "$(REPO_FILTER)" | xargs)
 
 # Getting arguments for tag goal(instruction)
 # https://www.gnu.org/software/make/manual/html_node/Conditional-Example.html
