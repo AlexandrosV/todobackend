@@ -11,6 +11,18 @@ REL_COMPOSE_FILE := docker/release/docker-compose.yml
 REL_PROJECT := $(PROJECT_NAME)$(BUILD_ID)
 DEV_PROJECT := $(REL_PROJECT)dev
 
+# It must match the Docker compose release specification application service name
+APP_SERVICE_NAME := app
+
+# Shell expression to be evaluated during runtime. UTC timestamp
+BUILD_TAG_EXPRESSION ?= date -u +%Y%m%d%H%M%S
+
+# Evaluation of BUILD_TAG_EXPRESSION
+BUILD_EXPRESSION := $(shell $(BUILD_TAG_EXPRESSION))
+
+# Final build tag. The '?=' operator is used so the dafault value can be override by a BUIL_TAG env. variable
+BUILD_TAG ?= $(BUILD_EXPRESSION)
+
 # Error & failure handling
 INSPECT := $$(docker-compose -p $$1 -f $$2 ps -q $$3 | xargs -I ARGS docker inspect -f "{{ .State.ExitCode }}" ARGS)
 
@@ -18,7 +30,10 @@ CHECK := @bash -c '\
   if [[ $(INSPECT) -ne 0 ]]; \
   then exit $(INSPECT); fi' CODE
 
-.PHONY: test build release clean
+# If absent set to public Dicker hub registry
+DOCKER_REGISTRY ?= docker.io
+
+.PHONY: test build release clean tag buildtag
 
 test:
 	${INFO} "Pulling latest images..."
@@ -74,12 +89,58 @@ clean:
 	@ docker images -q -f dangling=true -f label=application=$(REPO_NAME) | xargs -I ARGS docker rmi -f ARGS
 	${INFO} "Clean completed"
 
+# https://www.gnu.org/software/make/manual/html_node/Foreach-Function.html
+# make tag 0.1 latest ->
+#   docker tag <image id> <registry>/<org>/<repo>:0.1
+#   docker tag <image id> <registry>/<org>/<repo>:latest
+tag:
+	${INFO} "Tagging release image. Tags: $(TAG_ARGS)..."
+	@ $(foreach tag,$(TAG_ARGS), docker tag $(IMAGE_ID) $(DOCKER_REGISTRY)/$(ORG_NAME)/$(REPO_NAME):$(tag);)
+	${INFO} "Tagging completed"
+
+buildtag:
+	${INFO} "Tagging release image: suffix $(BUILD_TAG) and build tags $(BUILDTAG_ARGS)"
+	@ $(foreach tag,$(BUILDTAG_ARGS), docker tag $(IMAGE_ID) $(DOCKER_REGISTRY)/$(ORG_NAME)/$(REPO_NAME):$(tag).$(BUILD_TAG);)
+	${INFO} "Tagging completed"
+
 # Visual improvements
 YELLOW := "\e[1;33m"
 NC := "\e[0m"
 
-# Prints info messages. @-> supress outputting of the literal command; -c -> commands are read from a string
+# Prints info messages. @ -> supress outputting of the literal command; -c -> commands are read from a string
 INFO := @bash -c '\
  printf $(YELLOW); \
  echo "=> $$1"; \
  printf $(NC)' MESSAGE
+
+
+# Get container id of the application server id
+APP_CONTAINER_ID := $$(docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) ps -q $(APP_SERVICE_NAME))
+
+# Get image id if application service
+IMAGE_ID := $$(docker inspect -f '{{ .Image }}' $(APP_CONTAINER_ID))
+
+# Getting arguments for tag goal(instruction)
+# https://www.gnu.org/software/make/manual/html_node/Conditional-Example.html
+# https://www.gnu.org/software/make/manual/html_node/Goals.html
+# https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
+# I.e. make tag 1.0 latest -> $(MAKECMDGOALS) = tag 1.0 latest ; $(firstword $(MAKECMDGOAL) = tag
+# words -> count of MAKECMDGOALS ; wordlist -> 1.0 latest
+ifeq (tag, $(firstword $(MAKECMDGOALS)))
+  TAG_ARGS := $(wordlist 2, $(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifeq ($(TAG_ARGS),)
+    $(ERROR => tag not specified)
+  endif
+  # @ -> So 1.0 latest are not specified are make target files
+  $(eval $(TAG_ARGS):;@:)
+endif
+
+# Getting arguments for buildtag goal
+ifeq (buildtag, $(firstword $(MAKECMDGOALS)))
+  BUILDTAG_ARGS := $(wordlist 2, $(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  ifeq ($(BUILDTAG_ARGS),)
+    $(ERROR => tag not specified)
+  endif
+  # @ -> So 1.0 latest are not specified are make target files
+  $(eval $(BUILDTAG_ARGS):;@:)
+endif
