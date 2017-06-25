@@ -4,8 +4,8 @@ ORG_NAME ?= alexandrosv
 REPO_NAME ?= todobackend
 
 # Directories
-DEV_COMPOSE_FILE := docker/dev/docker-compose-v2.yml
-REL_COMPOSE_FILE := docker/release/docker-compose-v2.yml
+DEV_COMPOSE_FILE := docker/dev/docker-compose.yml
+REL_COMPOSE_FILE := docker/release/docker-compose.yml
 
 # Set unique project names
 REL_PROJECT := $(PROJECT_NAME)$(BUILD_ID)
@@ -39,14 +39,13 @@ DOCKER_REGISTRY_AUTH ?=
 .PHONY: test build release clean tag buildtag login logout publish
 
 test:
-	@ # Docker Compose doesn't create/detroy external voumes. It needs to be done manually
-	${INFO} "Creating cache volume..."
-	@ docker volume create --name cache
 	${INFO} "Pulling latest images..."
 	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) pull
 	${INFO} "Building images for test..."
 	@ # --pull ensures that dinamically created images are the latest
 	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) build --pull test
+	@ # cache version should be frozen until workflow is finished
+	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) build cache
 	${INFO} "Checking DB is up and running..."
 	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) run --rm agent
 	${INFO} "Running tests..."
@@ -68,6 +67,7 @@ release:
 	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) pull test
 	${INFO} "Building images for release build..."
 	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) build app
+	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) build webroot
 	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) build --pull nginx
 	${INFO} "Checking DB is up and running..."
 	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) up agent
@@ -83,9 +83,11 @@ release:
 
 clean:
 	${INFO} "Destroying development environment..."
-	@ docker-compose -p $(REL_PROJECT) -f $(DEV_COMPOSE_FILE) down -v
+	@ docker-compose -p $(REL_PROJECT) -f $(DEV_COMPOSE_FILE) kill
+	@ docker-compose -p $(REL_PROJECT) -f $(DEV_COMPOSE_FILE) rm -f -v
 	${INFO} "Destroying release environment..."
-	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) down -v
+	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) kill
+	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) rm -f -v
 	${INFO} "Deleting dangling images..."
 	@ docker images -q -f dangling=true -f label=application=$(REPO_NAME) | xargs -I ARGS docker rmi -f ARGS
 	${INFO} "Clean completed"
